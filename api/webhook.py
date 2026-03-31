@@ -76,9 +76,16 @@ def save_message(message):
             return
 
     print("=> 🟢 Topic hợp lệ, chuẩn bị đẩy vào Supabase...")
+    import sys
+    sys.stdout.flush()
+    
     # Cần set privacy của bot là disable ở BotFather để bot đọc được tin nhắn
     if message.text and not message.text.startswith('/'):
+        print(f"=> Nội dung tin nhắn: '{message.text[:50]}'")
+        sys.stdout.flush()
         try:
+            print("=> Đang gọi insert_message...")
+            sys.stdout.flush()
             insert_message(
                 chat_id=message.chat.id,
                 user_id=message.from_user.id,
@@ -86,8 +93,13 @@ def save_message(message):
                 text=message.text
             )
             print("=> ✅ Lưu thành công vào Supabase!")
+            sys.stdout.flush()
         except Exception as e:
-            print(f"Lỗi khi lưu tin nhắn: {e}")
+            print(f"Lỗi khi lưu tin nhắn: {type(e).__name__}: {e}")
+            sys.stdout.flush()
+    else:
+        print(f"=> ⚠️ Bỏ qua: text is None or starts with '/' | text={message.text}")
+        sys.stdout.flush()
 
 @app.route('/api/webhook', methods=['POST'])
 def webhook():
