@@ -10,8 +10,12 @@ def summarize_messages(messages_text: str) -> str:
     """Tóm tắt tin nhắn sử dụng Groq API (miễn phí, cực nhanh)"""
     api_key = os.environ.get("GROQ_API_KEY", "")
     
-    prompt = f"""Bạn là một trợ lý ảo quản lý nhóm Telegram. Hãy tóm tắt lại nội dung cuộc trò chuyện sau đây trong nhóm một cách ngắn gọn, súc tích và dễ hiểu bằng tiếng Việt.
-Tập trung vào các ý chính, các quyết định được đưa ra hoặc các chủ đề được thảo luận nhiều nhất và nên dưới 100 từ.
+    prompt = f"""Bạn là một trợ lý ảo quản lý nhóm Telegram. "Hãy tóm tắt đoạn hội thoại Telegram sau một cách ngắn gọn và chuẩn xác nhất.
+Yêu cầu:
+- Chỉ tập trung vào các ý chính, loại bỏ các câu giao tiếp dư thừa.
+- Giữ nguyên tính chính xác của các con số, thời gian, hoặc địa điểm (nếu có).
+- Trình bày dưới dạng gạch đầu dòng dễ đọc.
+- Tối đa 10 gạch đầu dòng
 
 Nội dung tin nhắn:
 {messages_text}"""
