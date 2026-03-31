@@ -1,5 +1,5 @@
 Flask
 pyTelegramBotAPI
-supabase
+supabase==2.28.3
 google-generativeai
 pytz
