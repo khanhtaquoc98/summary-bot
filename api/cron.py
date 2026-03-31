@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify
-from utils.supabase_client import get_supabase
+from utils.supabase_client import get_all_messages, delete_messages_before
 from utils.llm import summarize_messages, QuotaExceededError
 import telebot
 
@@ -15,10 +15,8 @@ def cron_job():
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
-        supabase = get_supabase()
         # Lấy tất cả tin nhắn hiện có
-        response = supabase.table("messages").select("*").execute()
-        messages = response.data
+        messages = get_all_messages()
         
         if not messages:
             return jsonify({"status": "Không có tin nhắn nào để tóm tắt trong hôm qua"}), 200
@@ -61,7 +59,7 @@ def cron_job():
                     
         # Lấy thời gian muộn nhất để xóa (chỉ xóa những tin nhắn vừa được đọc)
         max_time = max([m['created_at'] for m in messages])
-        supabase.table("messages").delete().lte("created_at", max_time).execute()
+        delete_messages_before(max_time)
 
         return jsonify({"status": "success", "groups_summarized": len(chat_groups), "messages_deleted": len(messages)}), 200
 

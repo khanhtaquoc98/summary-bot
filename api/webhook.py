@@ -2,7 +2,7 @@ import os
 import time
 import telebot
 from flask import Flask, request, jsonify
-from utils.supabase_client import get_supabase
+from utils.supabase_client import insert_message, get_messages
 from utils.llm import summarize_messages, QuotaExceededError
 
 app = Flask(__name__)
@@ -33,10 +33,8 @@ def send_summary(message):
     bot.reply_to(message, "Đang tổng hợp tin nhắn và tạo tóm tắt, vui lòng đợi...")
     
     try:
-        supabase = get_supabase()
         # Lấy 500 tin nhắn gần nhất từ Supabase
-        response = supabase.table("messages").select("*").eq("chat_id", chat_id).order("created_at", desc=True).limit(500).execute()
-        data = response.data
+        data = get_messages(chat_id, 500)
         
         if not data:
             bot.send_message(chat_id, "Không có tin nhắn nào được lưu trữ để tóm tắt.", message_thread_id=thread_id)
@@ -81,13 +79,13 @@ def save_message(message):
     # Cần set privacy của bot là disable ở BotFather để bot đọc được tin nhắn
     if message.text and not message.text.startswith('/'):
         try:
-            supabase = get_supabase()
-            supabase.table("messages").insert({
-                "chat_id": message.chat.id,
-                "user_id": message.from_user.id,
-                "user_name": message.from_user.full_name or message.from_user.username or "Unknown",
-                "text": message.text
-            }).execute()
+            insert_message(
+                chat_id=message.chat.id,
+                user_id=message.from_user.id,
+                user_name=message.from_user.full_name or message.from_user.username or "Unknown",
+                text=message.text
+            )
+            print("=> ✅ Lưu thành công vào Supabase!")
         except Exception as e:
             print(f"Lỗi khi lưu tin nhắn: {e}")
 
