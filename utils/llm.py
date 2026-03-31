@@ -11,7 +11,7 @@ def summarize_messages(messages_text: str) -> str:
     api_key = os.environ.get("GROQ_API_KEY", "")
     
     prompt = f"""Bạn là một trợ lý ảo quản lý nhóm Telegram. Hãy tóm tắt lại nội dung cuộc trò chuyện sau đây trong nhóm một cách ngắn gọn, súc tích và dễ hiểu bằng tiếng Việt.
-Tập trung vào các ý chính, các quyết định được đưa ra hoặc các chủ đề được thảo luận nhiều nhất.
+Tập trung vào các ý chính, các quyết định được đưa ra hoặc các chủ đề được thảo luận nhiều nhất và nên dưới 100 từ.
 
 Nội dung tin nhắn:
 {messages_text}"""
