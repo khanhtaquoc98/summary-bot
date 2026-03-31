@@ -21,14 +21,15 @@ def send_summary(message):
     if os.environ.get("SUMMARY_TOPIC_ID"):
         thread_id = int(os.environ.get("SUMMARY_TOPIC_ID"))
     
-    # Kiểm tra cache 1 phút
+    # Kiểm tra cache 5 phút
     cache_key = f"{chat_id}_{thread_id}"
     current_time = time.time()
     
     if cache_key in summary_cache:
         last_time, cached_summary = summary_cache[cache_key]
-        if current_time - last_time < 60:
-            bot.send_message(chat_id, f"⚡ *(Kết quả cũ cách đây vài giây)*\n{cached_summary}", parse_mode="Markdown", message_thread_id=thread_id)
+        remaining = int(300 - (current_time - last_time))
+        if remaining > 0:
+            bot.send_message(chat_id, f"⚡ Kết quả được lưu tạm (còn {remaining}s)\n\n{cached_summary}", message_thread_id=thread_id)
             return
             
     bot.reply_to(message, "Đang tổng hợp tin nhắn và tạo tóm tắt, vui lòng đợi...")
