@@ -44,7 +44,7 @@ def send_summary(message):
         # Đảo ngược mảng để tin nhắn hiển thị theo thứ tự thời gian (cũ -> mới)
         data.reverse() 
         
-        chat_text = "\\n".join([f"{msg['user_name']}: {msg['text']}" for msg in data if msg.get('text')])
+        chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in data if msg.get('text')])
         
         if not chat_text:
             bot.send_message(chat_id, "Không có nội dung tin nhắn dạng văn bản để tóm tắt.", message_thread_id=thread_id)
@@ -57,7 +57,7 @@ def send_summary(message):
         # Lưu kết quả vào biến tạm (cache) để dùng lại nếu có ai bấm gọi /summary liên tục
         summary_cache[cache_key] = (time.time(), final_text)
         
-        bot.send_message(chat_id, final_text, parse_mode="Markdown", message_thread_id=thread_id)
+        bot.send_message(chat_id, final_text, message_thread_id=thread_id)
         
     except QuotaExceededError as qe:
         bot.send_message(chat_id, str(qe), message_thread_id=thread_id)
