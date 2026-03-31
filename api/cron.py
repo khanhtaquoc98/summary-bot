@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify
-from utils.supabase_client import supabase
+from utils.supabase_client import get_supabase
 from utils.llm import summarize_messages, QuotaExceededError
 import telebot
 
@@ -15,6 +15,7 @@ def cron_job():
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
+        supabase = get_supabase()
         # Lấy tất cả tin nhắn hiện có
         response = supabase.table("messages").select("*").execute()
         messages = response.data
