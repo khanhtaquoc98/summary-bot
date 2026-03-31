@@ -12,10 +12,10 @@ def summarize_messages(messages_text: str) -> str:
     
     prompt = f"""Bạn là một trợ lý ảo quản lý nhóm Telegram. "Hãy tóm tắt đoạn hội thoại Telegram sau một cách ngắn gọn và chuẩn xác nhất.
 Yêu cầu:
-- Chỉ tập trung vào các ý chính, loại bỏ các câu giao tiếp dư thừa.
-- Giữ nguyên tính chính xác của các con số, thời gian, hoặc địa điểm (nếu có).
-- Trình bày dưới dạng gạch đầu dòng dễ đọc.
-- Tối đa 10 gạch đầu dòng
+- Trình bày bằng gạch đầu dòng các ý chính.
+- Bắt buộc: Mỗi dòng chỉ viết 1 ý và tuyệt đối không quá 20 từ.
+- Giữ chuẩn xác các con số, thời gian, địa điểm.
+- Trình bày dưới dạng gạch đầu dòng dễ đọc và Tối đa 10 gạch đầu dòng.
 
 Nội dung tin nhắn:
 {messages_text}"""
