@@ -107,11 +107,6 @@ def summarize_messages(messages_text: str) -> str:
     user_stats = ", ".join([f"{u} ({c} tin)" for u, c in top_users])
     summary_parts.append(f"👥 Hoạt động nhiều nhất: {user_stats}")
     
-    # Phần 2: Từ khoá nổi bật
-    if top_keywords:
-        keywords_str = ", ".join([f"{word} ({count})" for word, count in top_keywords[:8]])
-        summary_parts.append(f"🔑 Chủ đề chính: {keywords_str}")
-    
     # Phần 3: Các tin nhắn quan trọng
     summary_parts.append("\n📌 Nội dung nổi bật:")
     for score, idx, line in important:
