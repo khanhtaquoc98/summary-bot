@@ -6,7 +6,8 @@ from utils.supabase_client import insert_message, get_messages
 from utils.llm import summarize_messages, QuotaExceededError
 
 app = Flask(__name__)
-bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""))
+# QUAN TRỌNG: threaded=False để handler chạy đồng bộ trên Vercel Serverless
+bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
 
 # Bộ nhớ tạm để cache lại kết quả trong 60s
 summary_cache = {}
