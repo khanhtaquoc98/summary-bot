@@ -22,6 +22,6 @@ Nội dung tin nhắn:
         return response.text
     except Exception as e:
         error_msg = str(e).lower()
-        if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
-            raise QuotaExceededError("⚠️ Số lần tóm tắt miễn phí của bot đã đạt giới hạn!\n\n💡 Yêu cầu nhóm mình cân nhắc donate (ủng hộ) cho admin để có kinh phí nâng cấp Gói Tóm Tắt Cao Cấp hơn nhằm sử dụng liên tục, hoặc vui lòng đợi để dùng lại dịch vụ nhé. Xin cảm ơn!")
+        if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg or "rate" in error_msg:
+            raise QuotaExceededError("⏳ Bot đang bị giới hạn tốc độ tạm thời (quá nhiều yêu cầu trong thời gian ngắn). Vui lòng đợi 1-2 phút rồi thử lại nhé!")
         raise e
