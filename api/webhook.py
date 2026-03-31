@@ -67,11 +67,17 @@ def send_summary(message):
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def save_message(message):
+    print(f"=> Bắt được tin nhắn từ Chat ID: {message.chat.id} | Topic Thread ID: {getattr(message, 'message_thread_id', 'None')}")
+
     # Nếu user cấu hình một topic cố định, chỉ tiếp thu và lưu tin nhắn được gửi từ Topic đó
     env_summary_topic = os.environ.get("SUMMARY_TOPIC_ID")
-    if env_summary_topic and str(message.message_thread_id) != env_summary_topic:
-        return
+    if env_summary_topic:
+        print(f"=> Đang kiểm tra điều kiện lọc: Topic cấu hình là {env_summary_topic}")
+        if str(getattr(message, 'message_thread_id', None)) != str(env_summary_topic):
+            print(f"=> ⛔ Đã huỷ lưu vì khác Topic ID yêu cầu.")
+            return
 
+    print("=> 🟢 Topic hợp lệ, chuẩn bị đẩy vào Supabase...")
     # Cần set privacy của bot là disable ở BotFather để bot đọc được tin nhắn
     if message.text and not message.text.startswith('/'):
         try:
