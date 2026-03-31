@@ -62,7 +62,8 @@ def send_summary(message):
     except QuotaExceededError as qe:
         bot.send_message(chat_id, str(qe), message_thread_id=thread_id)
     except Exception as e:
-        bot.send_message(chat_id, f"Có lỗi xảy ra: {str(e)}", message_thread_id=thread_id)
+        print(f"Lỗi khi tổng hợp: {type(e).__name__}: {e}")
+        bot.send_message(chat_id, "❌ Không thể tổng hợp tin nhắn lúc này. Vui lòng thử lại sau!", message_thread_id=thread_id)
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def save_message(message):
