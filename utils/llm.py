@@ -1,11 +1,8 @@
 import os
-import google.generativeai as genai
+from google import genai
 
-# Configure Google Gemini
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
-
-# Use the latest fast model
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Khởi tạo Client theo chuẩn SDK mới của Google
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 class QuotaExceededError(Exception):
     pass
@@ -18,7 +15,10 @@ Nội dung tin nhắn:
 {messages_text}"""
     
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt,
+        )
         return response.text
     except Exception as e:
         error_msg = str(e).lower()
