@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from utils.supabase_client import get_all_messages, delete_messages_before
 from utils.llm import summarize_messages, QuotaExceededError
 import telebot
@@ -7,13 +7,8 @@ import telebot
 app = Flask(__name__)
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
 
-@app.route('/api/cron', methods=['GET'])
-def cron_job():
-    # Xác thực CRON_SECRET từ Vercel để tránh bị trigger lậu
-    auth_header = request.headers.get('Authorization')
-    if auth_header != f"Bearer {os.environ.get('CRON_SECRET')}":
-        return jsonify({"error": "Unauthorized"}), 401
-
+@app.route('/api/trigger', methods=['GET'])
+def trigger_cron_job():
     try:
         # Lấy tất cả tin nhắn hiện có
         messages = get_all_messages()
@@ -32,13 +27,12 @@ def cron_job():
         # Xử lý tóm tắt cho từng group chat
         for chat_id, msgs in chat_groups.items():
             msgs.sort(key=lambda x: x['created_at'])
-            chat_text = "\\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text')])
+            chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text')])
             
             if chat_text:
                 try:
                     summary = summarize_messages(chat_text)
                     
-                    # Cho phép khai báo biến môi trường NOTI_CHAT_ID và NOTI_TOPIC_ID để gửi vào chính xác 1 Topic mong muốn
                     noti_chat_id = os.environ.get("NOTI_CHAT_ID")
                     noti_topic_id = os.environ.get("NOTI_TOPIC_ID")
                     
@@ -48,7 +42,7 @@ def cron_job():
                     
                     bot.send_message(
                         chat_id, 
-                        f"🌅 *Tóm tắt tin nhắn ngày hôm qua:*\n\n{summary}", 
+                        f"🌅 *Tóm tắt tin nhắn kích hoạt thủ công:*\n\n{summary}", 
                         message_thread_id=target_thread
                     )
                 except QuotaExceededError as qe:
@@ -56,7 +50,7 @@ def cron_job():
                 except Exception as e:
                     print(f"Lỗi khi gửi tóm tắt cho chat_id {chat_id}: {e}")
                     
-        # Lấy thời gian muộn nhất để xóa (chỉ xóa những tin nhắn vừa được đọc)
+        # Lấy thời gian muộn nhất để xóa
         max_time = max([m['created_at'] for m in messages])
         delete_messages_before(max_time)
 
@@ -64,4 +58,3 @@ def cron_job():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
