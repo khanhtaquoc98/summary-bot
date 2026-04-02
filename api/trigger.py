@@ -27,7 +27,7 @@ def trigger_cron_job():
         # Xử lý tóm tắt cho từng group chat
         for chat_id, msgs in chat_groups.items():
             msgs.sort(key=lambda x: x['created_at'])
-            chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text')])
+            chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text') and len(msg['text'].split()) >= 2])
             
             if chat_text:
                 try:

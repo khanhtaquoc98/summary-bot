@@ -32,7 +32,12 @@ def cron_job():
         # Xử lý tóm tắt cho từng group chat
         for chat_id, msgs in chat_groups.items():
             msgs.sort(key=lambda x: x['created_at'])
-            chat_text = "\\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text')])
+            chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text') and len(msg['text'].split()) >= 2])
+            
+            # Giới hạn độ dài để tránh 413 Payload Too Large
+            MAX_CHARS = 4000
+            if len(chat_text) > MAX_CHARS:
+                chat_text = chat_text[:MAX_CHARS] + "\n... (đã cắt bớt)"
             
             if chat_text:
                 try:
