@@ -14,7 +14,7 @@ create table if not exists message_embeddings (
     user_id bigint,
     user_name text,
     text text not null,
-    embedding vector(384) not null,
+    embedding vector(1024) not null,
     created_at timestamptz default now()
 );
 
@@ -36,7 +36,7 @@ create index if not exists idx_message_embeddings_vector
 -- để dựa trên bảng message_embeddings
 -- =============================================
 create or replace function match_messages(
-    query_embedding vector(384),
+    query_embedding vector(1024),
     target_chat_id bigint,
     match_count int default 10
 )
