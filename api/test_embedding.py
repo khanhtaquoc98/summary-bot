@@ -15,22 +15,12 @@ def test_embedding():
     # Danh sách model thử nghiệm (384 dimensions)
     test_cases = [
         {
+            "name": "multilingual-minilm",
+            "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        },
+        {
             "name": "bge-small-en",
             "model": "BAAI/bge-small-en-v1.5",
-        },
-        {
-            "name": "e5-small-v2",
-            "model": "intfloat/e5-small-v2",
-        },
-        {
-            "name": "minilm-feature-extraction",
-            "model": "sentence-transformers/all-MiniLM-L6-v2",
-            "extra_params": {"parameters": {"task": "feature-extraction"}},
-        },
-        {
-            "name": "minilm-sentences-format",
-            "model": "sentence-transformers/all-MiniLM-L6-v2",
-            "payload": {"inputs": {"source_sentence": test_text, "sentences": [test_text]}},
         },
     ]
 

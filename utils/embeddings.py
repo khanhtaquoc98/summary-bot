@@ -2,9 +2,9 @@ import os
 import requests
 
 
-# Dùng HuggingFace Inference API (free) với model all-MiniLM-L6-v2 (384 dimensions)
+# Dùng HuggingFace Inference API (free) với model bge-small-en-v1.5 (384 dimensions)
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN", "")
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 API_URL = f"https://router.huggingface.co/hf-inference/models/{EMBEDDING_MODEL}"
 
 
