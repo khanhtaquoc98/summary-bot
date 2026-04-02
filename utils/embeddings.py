@@ -19,8 +19,14 @@ def get_embedding(text: str) -> list:
     try:
         resp = requests.post(
             API_URL,
-            headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
-            json={"inputs": truncated, "options": {"wait_for_model": True}},
+            headers={
+                "Authorization": f"Bearer {HF_API_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "inputs": truncated,
+                "options": {"wait_for_model": True}
+            },
             timeout=15
         )
         resp.raise_for_status()
@@ -36,4 +42,9 @@ def get_embedding(text: str) -> list:
         return None
     except Exception as e:
         print(f"Lỗi khi sinh embedding: {type(e).__name__}: {e}")
+        # In thêm response body để debug
+        try:
+            print(f"Response body: {resp.text}")
+        except Exception:
+            pass
         return None
