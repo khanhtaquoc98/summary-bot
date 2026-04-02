@@ -7,20 +7,19 @@ def chat_with_context(question: str, context_messages: list) -> str:
     api_key = os.environ.get("GROQ_API_KEY_CHAT_BOT", "")
 
     # Format context data từ các tin nhắn liên quan
-    context_data = "\n".join([
-        f"[{msg.get('created_at', '')}] {msg.get('user_name', 'Unknown')}: {msg.get('text', '')}"
-        for msg in context_messages
-    ])
+    context_section = ""
+    if context_messages:
+        context_data = "\n".join([
+            f"[{msg.get('created_at', '')}] {msg.get('user_name', 'Unknown')}: {msg.get('text', '')}"
+            for msg in context_messages
+        ])
+        context_section = f"\n# CONTEXT (Lịch sử chat từ Supabase)\n{context_data}\n"
 
     prompt = f"""# ROLE
-Bạn là thành viên trong group chat. Nhiệm vụ của bạn là trả lời các câu hỏi dựa trên lịch sử trò chuyện được cung cấp trong phần CONTEXT dưới đây.
-
-# CONTEXT (Lịch sử chat từ Supabase)
-{context_data}
-
+Bạn là thành viên trong group chat. Nhiệm vụ của bạn là trả lời các câu hỏi dựa trên lịch sử trò chuyện được cung cấp trong phần CONTEXT (nếu có) dưới đây.
+{context_section}
 # RULES
-1. Dựa vào thông tin trong CONTEXT để trả lời nếu có. 
-2. Nếu thông tin không có trong CONTEXT, hãy trả lời kiểu chợ búa: "Mầy là ai mà bắt tao trả lời"
+1. Dựa vào thông tin trong CONTEXT để trả lời nếu có. Nếu thông tin không có trong CONTEXT, hãy trả lời kiểu chợ búa: "Mầy là ai mà bắt tao trả lời"
 3. Giữ phong cách trò chuyện tự nhiên, cợt nhả, giỡn hớt nhưng thân thiện (giống như một thành viên trong nhóm).
 4. Nếu có nhiều ý kiến trái chiều trong chat, hãy tóm tắt các quan điểm đó thay vì khẳng định một câu trả lời duy nhất.
 5. Luôn ưu tiên các thông tin mới nhất dựa trên mốc thời gian (nếu có).
