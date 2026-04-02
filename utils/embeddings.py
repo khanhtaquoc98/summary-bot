@@ -5,7 +5,7 @@ import requests
 # Dùng HuggingFace Inference API (free) với model all-MiniLM-L6-v2 (384 dimensions)
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN", "")
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBEDDING_MODEL}"
+API_URL = f"https://router.huggingface.co/hf-inference/models/{EMBEDDING_MODEL}"
 
 
 def get_embedding(text: str) -> list:
