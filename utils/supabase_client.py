@@ -13,13 +13,27 @@ def _headers():
     }
 
 def insert_message(chat_id: int, user_id: int, user_name: str, text: str):
-    """Chèn tin nhắn mới vào bảng messages"""
+    """Chèn tin nhắn mới vào bảng messages (chỉ phục vụ summary)"""
     url = f"{SUPABASE_URL}/rest/v1/messages"
     payload = {
         "chat_id": chat_id,
         "user_id": user_id,
         "user_name": user_name,
         "text": text
+    }
+    resp = requests.post(url, json=payload, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+def insert_embedding(chat_id: int, user_id: int, user_name: str, text: str, embedding: list):
+    """Chèn embedding vào bảng message_embeddings (phục vụ vector search /ai)"""
+    url = f"{SUPABASE_URL}/rest/v1/message_embeddings"
+    payload = {
+        "chat_id": chat_id,
+        "user_id": user_id,
+        "user_name": user_name,
+        "text": text,
+        "embedding": embedding
     }
     resp = requests.post(url, json=payload, headers=_headers(), timeout=10)
     resp.raise_for_status()
@@ -43,6 +57,20 @@ def get_all_messages():
     url = f"{SUPABASE_URL}/rest/v1/messages"
     params = {"select": "*"}
     resp = requests.get(url, params=params, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+def search_similar_messages(query_embedding: list, chat_id: int, match_count: int = 10):
+    """Tìm kiếm tin nhắn liên quan nhất bằng vector similarity search (pgvector)
+    Sử dụng bảng message_embeddings riêng biệt
+    """
+    url = f"{SUPABASE_URL}/rest/v1/rpc/match_messages"
+    payload = {
+        "query_embedding": query_embedding,
+        "target_chat_id": chat_id,
+        "match_count": match_count
+    }
+    resp = requests.post(url, json=payload, headers=_headers(), timeout=15)
     resp.raise_for_status()
     return resp.json()
 

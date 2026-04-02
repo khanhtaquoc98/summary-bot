@@ -1,0 +1,39 @@
+import os
+import requests
+
+
+# Dùng HuggingFace Inference API (free) với model all-MiniLM-L6-v2 (384 dimensions)
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN", "")
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBEDDING_MODEL}"
+
+
+def get_embedding(text: str) -> list:
+    """Sinh embedding vector 384 chiều cho đoạn text bằng HuggingFace Inference API (miễn phí)"""
+    if not HF_API_TOKEN:
+        return None
+
+    # Cắt text quá dài (model chỉ hỗ trợ ~512 tokens)
+    truncated = text[:500] if len(text) > 500 else text
+
+    try:
+        resp = requests.post(
+            API_URL,
+            headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
+            json={"inputs": truncated, "options": {"wait_for_model": True}},
+            timeout=15
+        )
+        resp.raise_for_status()
+        embedding = resp.json()
+
+        # API trả về list of floats cho single input
+        if isinstance(embedding, list) and len(embedding) > 0:
+            # Nếu trả về nested list [[...]], lấy phần tử đầu
+            if isinstance(embedding[0], list):
+                return embedding[0]
+            return embedding
+
+        return None
+    except Exception as e:
+        print(f"Lỗi khi sinh embedding: {type(e).__name__}: {e}")
+        return None

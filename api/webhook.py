@@ -2,8 +2,10 @@ import os
 import time
 import telebot
 from flask import Flask, request, jsonify
-from utils.supabase_client import insert_message, get_messages
+from utils.supabase_client import insert_message, insert_embedding, get_messages, search_similar_messages
 from utils.llm import summarize_messages, QuotaExceededError
+from utils.embeddings import get_embedding
+from utils.chatbot import chat_with_context
 
 app = Flask(__name__)
 # QUAN TRỌNG: threaded=False để handler chạy đồng bộ trên Vercel Serverless
@@ -32,14 +34,14 @@ def send_summary(message):
             bot.send_message(chat_id, f"⚡ Kết quả được lưu tạm (còn {remaining}s)\n\n{cached_summary}", message_thread_id=thread_id)
             return
             
-    bot.reply_to(message, "Đang tổng hợp tin nhắn và tạo tóm tắt, vui lòng đợi...")
+    loading_msg = bot.reply_to(message, "⏳ Đang tổng hợp tin nhắn và tạo tóm tắt, vui lòng đợi...")
     
     try:
         # Lấy 500 tin nhắn gần nhất từ Supabase
         data = get_messages(chat_id, 500)
         
         if not data:
-            bot.send_message(chat_id, "Không có tin nhắn nào được lưu trữ để tóm tắt.", message_thread_id=thread_id)
+            bot.edit_message_text("Không có tin nhắn nào được lưu trữ để tóm tắt.", chat_id=chat_id, message_id=loading_msg.message_id)
             return
             
         # Đảo ngược mảng để tin nhắn hiển thị theo thứ tự thời gian (cũ -> mới)
@@ -48,23 +50,72 @@ def send_summary(message):
         chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in data if msg.get('text')])
         
         if not chat_text:
-            bot.send_message(chat_id, "Không có nội dung tin nhắn dạng văn bản để tóm tắt.", message_thread_id=thread_id)
+            bot.edit_message_text("Không có nội dung tin nhắn dạng văn bản để tóm tắt.", chat_id=chat_id, message_id=loading_msg.message_id)
             return
             
-        # Gọi Gemini để tóm tắt
+        # Gọi Groq để tóm tắt
         summary = summarize_messages(chat_text)
         final_text = f"🌟 *Tóm tắt {len(data)} tin nhắn gần nhất:*\n\n{summary}"
         
         # Lưu kết quả vào biến tạm (cache) để dùng lại nếu có ai bấm gọi /summary liên tục
         summary_cache[cache_key] = (time.time(), final_text)
         
-        bot.send_message(chat_id, final_text, message_thread_id=thread_id)
+        bot.edit_message_text(final_text, chat_id=chat_id, message_id=loading_msg.message_id)
         
     except QuotaExceededError as qe:
-        bot.send_message(chat_id, str(qe), message_thread_id=thread_id)
+        bot.edit_message_text(str(qe), chat_id=chat_id, message_id=loading_msg.message_id)
     except Exception as e:
         print(f"Lỗi khi tổng hợp: {type(e).__name__}: {e}")
-        bot.send_message(chat_id, "❌ Không thể tổng hợp tin nhắn lúc này. Vui lòng thử lại sau!", message_thread_id=thread_id)
+        bot.edit_message_text("❌ Không thể tổng hợp tin nhắn lúc này. Vui lòng thử lại sau!", chat_id=chat_id, message_id=loading_msg.message_id)
+
+
+@bot.message_handler(commands=['ai'])
+def handle_ai_command(message):
+    """Xử lý lệnh /ai <câu hỏi> - tìm tin nhắn liên quan bằng vector search rồi trả lời"""
+    chat_id = message.chat.id
+    thread_id = getattr(message, 'message_thread_id', None)
+
+    # Lấy câu hỏi từ sau lệnh /ai
+    question = message.text.replace('/ai', '', 1).strip()
+    if not question:
+        bot.reply_to(message, "💡 Cách dùng: /ai <câu hỏi>")
+        return
+
+    loading_msg = bot.reply_to(message, "🤖 Đang tìm kiếm thông tin và suy nghĩ...")
+    start_time = time.time()
+
+    try:
+        # Bước 1: Sinh embedding vector cho câu hỏi
+        question_embedding = get_embedding(question)
+        
+        # Bước 2: Tìm tin nhắn liên quan bằng vector search (nếu có embedding)
+        similar_messages = []
+        if question_embedding:
+            try:
+                similar_messages = search_similar_messages(question_embedding, chat_id, match_count=10)
+            except Exception:
+                pass  # Không tìm được thì vẫn trả lời không cần context
+
+        # Bước 3: Gửi context + câu hỏi vào Groq để trả lời (context có thể rỗng)
+        answer = chat_with_context(question, similar_messages)
+
+        # Đảm bảo thời gian phản hồi >= 2s để tạo cảm giác bot đang suy nghĩ
+        elapsed = time.time() - start_time
+        if elapsed < 2:
+            time.sleep(2 - elapsed)
+
+        bot.edit_message_text(
+            f"🤖 {answer}",
+            chat_id=chat_id, message_id=loading_msg.message_id
+        )
+
+    except Exception as e:
+        print(f"Lỗi khi xử lý /ai: {type(e).__name__}: {e}")
+        bot.edit_message_text(
+            "❌ Mày hỏi đểu hả, biết rồi hỏi clz!",
+            chat_id=chat_id, message_id=loading_msg.message_id
+        )
+
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def save_message(message):
@@ -89,12 +140,31 @@ def save_message(message):
         try:
             print("=> Đang gọi insert_message...")
             sys.stdout.flush()
+            
+            # Luôn lưu vào bảng messages (phục vụ /summary)
             insert_message(
                 chat_id=message.chat.id,
                 user_id=message.from_user.id,
                 user_name=message.from_user.full_name or message.from_user.username or "Unknown",
                 text=message.text
             )
+            
+            # Sinh embedding và lưu vào bảng message_embeddings riêng (phục vụ /ai)
+            if len(message.text.split()) >= 2:
+                embedding = get_embedding(message.text)
+                if embedding:
+                    try:
+                        insert_embedding(
+                            chat_id=message.chat.id,
+                            user_id=message.from_user.id,
+                            user_name=message.from_user.full_name or message.from_user.username or "Unknown",
+                            text=message.text,
+                            embedding=embedding
+                        )
+                    except Exception as emb_err:
+                        # Embedding lỗi thì bỏ qua, không ảnh hưởng đến việc lưu message
+                        print(f"⚠️ Lỗi lưu embedding (bỏ qua): {type(emb_err).__name__}: {emb_err}")
+            
             print("=> ✅ Lưu thành công vào Supabase!")
             sys.stdout.flush()
         except Exception as e:
