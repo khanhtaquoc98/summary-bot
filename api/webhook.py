@@ -69,16 +69,16 @@ def send_summary(message):
         bot.edit_message_text("❌ Không thể tổng hợp tin nhắn lúc này. Vui lòng thử lại sau!", chat_id=chat_id, message_id=loading_msg.message_id)
 
 
-@bot.message_handler(commands=['ai'])
+@bot.message_handler(commands=['kutien'])
 def handle_ai_command(message):
-    """Xử lý lệnh /ai <câu hỏi> - tìm tin nhắn liên quan bằng vector search rồi trả lời"""
+    """Xử lý lệnh /kutien <câu hỏi> - tìm tin nhắn liên quan bằng vector search rồi trả lời"""
     chat_id = message.chat.id
     thread_id = getattr(message, 'message_thread_id', None)
 
-    # Lấy câu hỏi từ sau lệnh /ai
-    question = message.text.replace('/ai', '', 1).strip()
+    # Lấy câu hỏi từ sau lệnh /kutien
+    question = message.text.replace('/kutien', '', 1).strip()
     if not question:
-        bot.reply_to(message, "💡 Cách dùng: /ai <câu hỏi>")
+        bot.reply_to(message, "💡 Cách dùng: /kutien <câu hỏi>")
         return
 
     loading_msg = bot.reply_to(message, "🤖 Đang tìm kiếm thông tin và suy nghĩ...")
@@ -110,7 +110,7 @@ def handle_ai_command(message):
         )
 
     except Exception as e:
-        print(f"Lỗi khi xử lý /ai: {type(e).__name__}: {e}")
+        print(f"Lỗi khi xử lý /kutien: {type(e).__name__}: {e}")
         bot.edit_message_text(
             "❌ Mày hỏi đểu hả, biết rồi hỏi clz!",
             chat_id=chat_id, message_id=loading_msg.message_id
