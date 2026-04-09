@@ -1,6 +1,7 @@
 import os
 import time
 import telebot
+import requests
 from flask import Flask, request, jsonify
 from utils.supabase_client import insert_message, insert_embedding, get_messages, search_similar_messages
 from utils.llm import summarize_messages, QuotaExceededError
@@ -115,6 +116,58 @@ def handle_ai_command(message):
             "❌ Mày hỏi đểu hả, biết rồi hỏi clz!",
             chat_id=chat_id, message_id=loading_msg.message_id
         )
+
+
+@bot.message_handler(commands=['thanhtoan'])
+def handle_thanhtoan_command(message):
+    chat_id = message.chat.id
+    
+    loading_msg = bot.reply_to(message, "⏳ Đang lấy dữ liệu thanh toán...")
+    
+    try:
+        response = requests.get("https://cham-het-fc-team.vercel.app/api/payment/check-paid")
+        if response.status_code != 200:
+            bot.edit_message_text(f"❌ Lỗi khi lấy dữ liệu: HTTP {response.status_code}", chat_id=chat_id, message_id=loading_msg.message_id)
+            return
+            
+        data = response.json()
+        
+        totalCount = data.get('totalCount', 0)
+        paidCount = data.get('paidCount', 0)
+        unpaidCount = data.get('unpaidCount', 0)
+        
+        totalAmount = data.get('totalAmount', 0)
+        paidAmount = data.get('paidAmount', 0)
+        unpaidAmount = data.get('unpaidAmount', 0)
+        
+        unpaidPlayers = data.get('unpaidPlayers', [])
+        
+        if not unpaidPlayers or len(unpaidPlayers) == 0:
+            msg_text = (
+                f"✅ *Mọi người đã thanh toán đầy đủ!*\n\n"
+                f"💰 Tổng tiền đã thu: *{totalAmount:,.0f}đ*\n"
+                f"👥 Tổng số người chơi: {totalCount} người\n"
+            )
+        else:
+            msg_text = (
+                f"📊 *THÔNG TIN THANH TOÁN*\n\n"
+                f"👥 Tổng số người chơi: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
+                f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
+                f"✅ Đã thu: {paidAmount:,.0f}đ\n"
+                f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n\n"
+                f"📋 *Danh sách chưa thanh toán ({len(unpaidPlayers)} người):*\n"
+            )
+            for idx, p in enumerate(unpaidPlayers, 1):
+                name = p.get('playerName', 'Unknown')
+                team = p.get('teamName', 'Unknown')
+                amount = p.get('totalAmount', 0)
+                msg_text += f"{idx}. {name} ({team}): {amount:,.0f}đ\n"
+                
+        bot.edit_message_text(msg_text, chat_id=chat_id, message_id=loading_msg.message_id, parse_mode='Markdown')
+        
+    except Exception as e:
+        print(f"Lỗi khi xử lý /thanhtoan: {type(e).__name__}: {e}")
+        bot.edit_message_text("❌ Có lỗi xảy ra khi lấy thông tin thanh toán!", chat_id=chat_id, message_id=loading_msg.message_id)
 
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
