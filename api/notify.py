@@ -30,7 +30,7 @@ def send_notification():
     message_text = f"📢 *{title}*\n\n{body}"
     
     try:
-        kwargs = {"parse_mode": "MarkdownV2"}
+        kwargs = {"parse_mode": "Markdown"}
         if thread_id:
             kwargs["message_thread_id"] = int(thread_id)
             
