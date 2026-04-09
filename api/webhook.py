@@ -146,12 +146,12 @@ def handle_thanhtoan_command(message):
             msg_text = (
                 f"✅ *Mọi người đã thanh toán đầy đủ!*\n\n"
                 f"💰 Tổng tiền đã thu: *{totalAmount:,.0f}đ*\n"
-                f"👥 Tổng số người chơi: {totalCount} người\n"
+                f"👥 Tổng: {totalCount} người\n"
             )
         else:
             msg_text = (
                 f"📊 *THÔNG TIN THANH TOÁN*\n\n"
-                f"👥 Tổng số người chơi: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
+                f"👥 Tổng cầu thủ: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
                 f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
                 f"✅ Đã thu: {paidAmount:,.0f}đ\n"
                 f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n\n"
