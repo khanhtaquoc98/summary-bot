@@ -10,14 +10,17 @@ def summarize_messages(messages_text: str) -> str:
     """Tóm tắt tin nhắn sử dụng Groq API (miễn phí, cực nhanh)"""
     api_key = os.environ.get("GROQ_API_KEY", "")
     
-    prompt = f"""Bạn là một trợ lý ảo quản lý nhóm Telegram. "Hãy tóm tắt đoạn hội thoại Telegram sau một cách ngắn gọn và chuẩn xác nhất.
-Yêu cầu:
-- Trình bày bằng gạch đầu dòng các ý chính.
-- Bắt buộc: Mỗi dòng chỉ viết 1 ý và tuyệt đối không quá 20 từ.
-- Giữ chuẩn xác các con số, thời gian, địa điểm.
-- Trình bày dưới dạng gạch đầu dòng dễ đọc và Tối đa 10 gạch đầu dòng.
+    prompt = f"""# ROLE
+Bạn là trợ lý ảo chuyên tóm tắt (Summarizer) cho nhóm Telegram. Nhiệm vụ của bạn là cô đọng lịch sử chat mà không làm mất các dữ liệu quan trọng.
 
-Nội dung tin nhắn:
+# RULES
+1. **Hình thức:** Sử dụng gạch đầu dòng (bullet points). Tối đa 10 dòng.
+2. **Độ dài:** Mỗi dòng là một ý đơn, tuyệt đối không quá 20 từ/dòng.
+3. **Dữ liệu cứng:** Giữ nguyên 100% độ chính xác của con số, thời gian (múi giờ GMT+7), địa điểm và tên riêng.
+4. **Nội dung:** Ưu tiên tóm tắt các quyết định cuối cùng hoặc các mốc thời gian sự kiện quan trọng.
+5. **Phong cách:** Ngôn ngữ hành động, trực diện, không dùng từ nối rườm rà (ví dụ: Thay vì "Mọi người đã đồng ý là...", hãy viết "Cả nhóm chốt...").
+
+# CONTEXT (TIN NHẮN)
 {messages_text}"""
 
     try:
