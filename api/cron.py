@@ -1,4 +1,5 @@
 import os
+import requests
 from flask import Flask, request, jsonify
 from utils.supabase_client import get_all_messages, delete_messages_before
 from utils.llm import summarize_messages, QuotaExceededError
@@ -20,6 +21,39 @@ def cron_job():
         
         if not messages:
             return jsonify({"status": "Không có tin nhắn nào để tóm tắt trong hôm qua"}), 200
+            
+        # Lấy thông tin thanh toán chung 1 lần
+        payment_msg = None
+        try:
+            resp = requests.get("https://cham-het-fc-team.vercel.app/api/payment/check-paid")
+            if resp.status_code == 200:
+                data = resp.json()
+                unpaidAmount = data.get('unpaidAmount', 0)
+                if unpaidAmount > 0:
+                    totalCount = data.get('totalCount', 0)
+                    paidCount = data.get('paidCount', 0)
+                    unpaidCount = data.get('unpaidCount', 0)
+                    totalAmount = data.get('totalAmount', 0)
+                    paidAmount = data.get('paidAmount', 0)
+                    unpaidPlayers = data.get('unpaidPlayers', [])
+                    
+                    msg_text = (
+                        f"📊 *THÔNG TIN THANH TOÁN*\n\n"
+                        f"👥 Tổng cầu thủ: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
+                        f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
+                        f"✅ Đã thu: {paidAmount:,.0f}đ\n"
+                        f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n\n"
+                        f"📋 *Danh sách chưa thanh toán ({len(unpaidPlayers)} người):*\n"
+                    )
+                    for idx, p in enumerate(unpaidPlayers, 1):
+                        name = p.get('playerName', 'Unknown')
+                        team = p.get('teamName', 'Unknown')
+                        amount = p.get('totalAmount', 0)
+                        msg_text += f"{idx}. {name} ({team}): {amount:,.0f}đ\n"
+                    
+                    payment_msg = msg_text
+        except Exception as e:
+            print(f"Lỗi khi check payment thông tin: {e}")
             
         # Gom nhóm tin nhắn theo chat_id
         chat_groups = {}
@@ -56,6 +90,14 @@ def cron_job():
                         f"🌅 *Tóm tắt tin nhắn ngày hôm qua:*\n\n{summary}", 
                         message_thread_id=target_thread
                     )
+                    
+                    if payment_msg:
+                        bot.send_message(
+                            chat_id, 
+                            payment_msg, 
+                            message_thread_id=target_thread,
+                            parse_mode='Markdown'
+                        )
                 except QuotaExceededError as qe:
                     bot.send_message(chat_id, str(qe), message_thread_id=target_thread)
                 except Exception as e:
