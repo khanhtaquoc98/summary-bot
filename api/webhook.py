@@ -106,7 +106,7 @@ def handle_ai_command(message):
             time.sleep(2 - elapsed)
 
         bot.edit_message_text(
-            f"🤖 {answer}",
+            f"{answer}",
             chat_id=chat_id, message_id=loading_msg.message_id
         )
 
