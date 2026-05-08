@@ -170,6 +170,95 @@ def handle_thanhtoan_command(message):
         bot.edit_message_text("❌ Có lỗi xảy ra khi lấy thông tin thanh toán!", chat_id=chat_id, message_id=loading_msg.message_id)
 
 
+@bot.message_handler(func=lambda message: message.text and (message.text.startswith('/open_ban') or message.text.startswith('/open-ban')))
+def handle_open_ban(message):
+    chat_id = message.chat.id
+    
+    # Extract userId
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, "💡 Cách dùng: /open_ban <userId>")
+        return
+        
+    target_user_id = parts[1]
+    if not target_user_id.lstrip('-').isdigit(): # Support negative user IDs just in case, though user IDs are usually positive
+        bot.reply_to(message, "❌ userId phải là số!")
+        return
+        
+    target_user_id = int(target_user_id)
+    
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn_mute = telebot.types.InlineKeyboardButton("🚫 Mute (Cấm chat)", callback_data=f"ban_mute_{target_user_id}")
+    btn_unmute = telebot.types.InlineKeyboardButton("✅ Unmute (Mở chat)", callback_data=f"ban_unmute_{target_user_id}")
+    
+    markup.add(btn_mute, btn_unmute)
+    
+    bot.reply_to(message, f"Quản lý quyền cho user `{target_user_id}`:", reply_markup=markup, parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ban_'))
+def handle_ban_callback(call):
+    chat_id = call.message.chat.id
+    data = call.data.split('_')
+    action = data[1]
+    target_user_id = int(data[2])
+    
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    url = f"https://api.telegram.org/bot{bot_token}/restrictChatMember"
+    
+    try:
+        if action == "mute":
+            payload = {
+                "chat_id": chat_id,
+                "user_id": target_user_id,
+                "permissions": {
+                    "can_send_messages": False,
+                    "can_send_audios": False,
+                    "can_send_documents": False,
+                    "can_send_photos": False,
+                    "can_send_videos": False,
+                    "can_send_video_notes": False,
+                    "can_send_voice_notes": False,
+                    "can_send_polls": False,
+                    "can_send_other_messages": False,
+                    "can_add_web_page_previews": False
+                }
+            }
+            res = requests.post(url, json=payload).json()
+            if res.get("ok"):
+                bot.answer_callback_query(call.id, "Đã Mute user!")
+                bot.edit_message_text(f"🚫 Đã khóa chat user `{target_user_id}`", chat_id=chat_id, message_id=call.message.message_id, parse_mode="Markdown")
+            else:
+                bot.answer_callback_query(call.id, f"Lỗi: {res.get('description')}")
+                
+        elif action == "unmute":
+            payload = {
+                "chat_id": chat_id,
+                "user_id": target_user_id,
+                "permissions": {
+                    "can_send_messages": True,
+                    "can_send_audios": True,
+                    "can_send_documents": True,
+                    "can_send_photos": True,
+                    "can_send_videos": True,
+                    "can_send_video_notes": True,
+                    "can_send_voice_notes": True,
+                    "can_send_polls": True,
+                    "can_send_other_messages": True,
+                    "can_add_web_page_previews": True
+                }
+            }
+            res = requests.post(url, json=payload).json()
+            if res.get("ok"):
+                bot.answer_callback_query(call.id, "Đã Unmute user!")
+                bot.edit_message_text(f"✅ Đã mở chat cho user `{target_user_id}`", chat_id=chat_id, message_id=call.message.message_id, parse_mode="Markdown")
+            else:
+                bot.answer_callback_query(call.id, f"Lỗi: {res.get('description')}")
+                
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"Lỗi: {str(e)}")
+        bot.edit_message_text(f"❌ Lỗi khi thực hiện: {str(e)}", chat_id=chat_id, message_id=call.message.message_id)
+
+
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def save_message(message):
     print(f"=> Bắt được tin nhắn từ Chat ID: {message.chat.id} | Topic Thread ID: {getattr(message, 'message_thread_id', 'None')}")
