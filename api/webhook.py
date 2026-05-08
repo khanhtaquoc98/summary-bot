@@ -207,9 +207,10 @@ def handle_ban_callback(call):
     url = f"https://api.telegram.org/bot{bot_token}/restrictChatMember"
     
     try:
+        target_group_id = -1001505319885  # Mặc định group lấy từ link t.me/c/1505319885/...
         if action == "mute":
             payload = {
-                "chat_id": chat_id,
+                "chat_id": target_group_id,
                 "user_id": target_user_id,
                 "permissions": {
                     "can_send_messages": False,
@@ -233,7 +234,7 @@ def handle_ban_callback(call):
                 
         elif action == "unmute":
             payload = {
-                "chat_id": chat_id,
+                "chat_id": target_group_id,
                 "user_id": target_user_id,
                 "permissions": {
                     "can_send_messages": True,
