@@ -42,7 +42,8 @@ def cron_job():
                         f"👥 Tổng cầu thủ: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
                         f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
                         f"✅ Đã thu: {paidAmount:,.0f}đ\n"
-                        f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n\n"
+                        f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n"
+                        f"🔗 Link thanh toán: https://cham-het-fc-team.vercel.app/payment\n"
                         f"📋 *Danh sách chưa thanh toán ({len(unpaidPlayers)} người):*\n"
                     )
                     for idx, p in enumerate(unpaidPlayers, 1):
