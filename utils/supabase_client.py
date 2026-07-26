@@ -81,3 +81,85 @@ def delete_messages_before(max_time: str):
     resp = requests.delete(url, params=params, headers=_headers(), timeout=10)
     resp.raise_for_status()
     return resp
+
+def insert_poll(poll_id: str, message_id: int, chat_id: int, thread_id: int, title: str, options: list, is_anonymous: bool):
+    """Lưu/cập nhật thông tin cuộc biểu quyết (Poll) vào bảng polls (upsert)"""
+    url = f"{SUPABASE_URL}/rest/v1/polls"
+    headers = _headers()
+    headers["Prefer"] = "resolution=merge-duplicates,return=representation"
+    payload = {
+        "poll_id": str(poll_id),
+        "message_id": int(message_id) if message_id is not None else None,
+        "chat_id": int(chat_id) if chat_id is not None else None,
+        "thread_id": int(thread_id) if thread_id is not None else None,
+        "title": title,
+        "options": options,
+        "is_anonymous": is_anonymous
+    }
+    resp = requests.post(url, json=payload, headers=headers, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+def save_poll_answer(poll_id: str, user_id: int, user_name: str, option_ids: list):
+    """Lưu/cập nhật kết quả vote của người dùng vào bảng poll_answers (upsert)"""
+    url = f"{SUPABASE_URL}/rest/v1/poll_answers"
+    headers = _headers()
+    headers["Prefer"] = "resolution=merge-duplicates,return=representation"
+    payload = {
+        "poll_id": str(poll_id),
+        "user_id": user_id,
+        "user_name": user_name,
+        "option_ids": option_ids
+    }
+    resp = requests.post(url, json=payload, headers=headers, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_poll_voters(poll_id: str):
+    """Lấy danh sách người đã vote theo poll_id"""
+    url = f"{SUPABASE_URL}/rest/v1/poll_answers"
+    params = {
+        "poll_id": f"eq.{poll_id}",
+        "select": "*"
+    }
+    resp = requests.get(url, params=params, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_poll_by_id(poll_id: str):
+    """Lấy thông tin cuộc biểu quyết theo poll_id"""
+    url = f"{SUPABASE_URL}/rest/v1/polls"
+    params = {
+        "poll_id": f"eq.{poll_id}",
+        "select": "*"
+    }
+    resp = requests.get(url, params=params, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    return data[0] if data else None
+
+def get_user_poll_answer(poll_id: str, user_id: int):
+    """Lấy kết quả vote cũ của người dùng trong poll_answers"""
+    url = f"{SUPABASE_URL}/rest/v1/poll_answers"
+    params = {
+        "poll_id": f"eq.{poll_id}",
+        "user_id": f"eq.{user_id}",
+        "select": "*"
+    }
+    resp = requests.get(url, params=params, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    return data[0] if data else None
+
+def clear_all_poll_answers(poll_id: str = None):
+    """Xoá tất cả lượt vote cũ trong poll_answers (hoặc xoá theo poll_id nếu có)"""
+    url = f"{SUPABASE_URL}/rest/v1/poll_answers"
+    if poll_id:
+        params = {"poll_id": f"eq.{poll_id}"}
+    else:
+        params = {"id": "gte.0"}
+    resp = requests.delete(url, params=params, headers=_headers(), timeout=10)
+    return resp
+
+
+

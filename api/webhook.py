@@ -3,14 +3,37 @@ import time
 import telebot
 import requests
 from flask import Flask, request, jsonify
-from utils.supabase_client import insert_message, insert_embedding, get_messages, search_similar_messages
+from utils.supabase_client import insert_message, insert_embedding, get_messages, search_similar_messages, save_poll_answer
 from utils.llm import summarize_messages, QuotaExceededError
 from utils.embeddings import get_embedding
 from utils.chatbot import chat_with_context
 
+from utils.bench_sync import sync_vote_to_bench
+
 app = Flask(__name__)
 # QUAN TRỌNG: threaded=False để handler chạy đồng bộ trên Vercel Serverless
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
+
+@bot.poll_answer_handler()
+def handle_poll_answer(poll_answer):
+    """Bắt sự kiện người dùng bấm vote trong Poll để đồng bộ với bench API và lưu vào Supabase"""
+    try:
+        poll_id = poll_answer.poll_id
+        user = poll_answer.user
+        user_id = user.id
+        user_name = getattr(user, 'full_name', None) or getattr(user, 'username', None) or f"User_{user_id}"
+        option_ids = poll_answer.option_ids
+        
+        # 1. Đồng bộ gọi bench bulk API dựa trên sự thay đổi vote (+1, +3, 0...)
+        sync_vote_to_bench(poll_id, user, option_ids)
+        
+        # 2. Cập nhật kết quả vote mới nhất vào Supabase
+        save_poll_answer(poll_id, user_id, user_name, option_ids)
+        print(f"✅ Đã lưu lượt vote của {user_name} (User ID: {user_id}) cho Poll {poll_id}")
+    except Exception as e:
+        print(f"❌ Lỗi khi xử lý poll_answer: {e}")
+
+
 
 # Bộ nhớ tạm để cache lại kết quả trong 60s
 summary_cache = {}
@@ -171,6 +194,36 @@ def handle_thanhtoan_command(message):
     except Exception as e:
         print(f"Lỗi khi xử lý /thanhtoan: {type(e).__name__}: {e}")
         bot.edit_message_text("❌ Có lỗi xảy ra khi lấy thông tin thanh toán!", chat_id=chat_id, message_id=loading_msg.message_id)
+
+
+@bot.message_handler(commands=['demnguoi', 'dem_nguoi'])
+def handle_demnguoi_command(message):
+    """Xử lý lệnh /demnguoi - đếm tổng số suất đá và danh sách người tham gia"""
+    chat_id = message.chat.id
+    thread_id = getattr(message, 'message_thread_id', None)
+
+    loading_msg = bot.reply_to(message, "⏳ Đang tổng hợp số lượng người tham gia...")
+
+    try:
+        from api.demnguoi import get_latest_poll, build_demnguoi_report
+        from utils.supabase_client import get_poll_voters
+
+        poll_info = get_latest_poll()
+        if not poll_info:
+            bot.edit_message_text("❌ Chưa có thông tin cuộc biểu quyết nào được lưu.", chat_id=chat_id, message_id=loading_msg.message_id)
+            return
+
+        answers = get_poll_voters(str(poll_info['poll_id']))
+        if not answers:
+            bot.edit_message_text(f"ℹ️ Chưa có ai chọn vote cho biểu quyết: *{poll_info.get('title')}*", chat_id=chat_id, message_id=loading_msg.message_id, parse_mode='Markdown')
+            return
+
+        report = build_demnguoi_report(poll_info, answers)
+        bot.edit_message_text(report['markdown_text'], chat_id=chat_id, message_id=loading_msg.message_id, parse_mode='Markdown')
+
+    except Exception as e:
+        print(f"Lỗi khi xử lý /demnguoi: {e}")
+        bot.edit_message_text("❌ Có lỗi xảy ra khi tổng hợp dữ liệu đếm người!", chat_id=chat_id, message_id=loading_msg.message_id)
 
 
 @bot.message_handler(func=lambda message: message.text and (message.text.startswith('/open_ban') or message.text.startswith('/open-ban')))
