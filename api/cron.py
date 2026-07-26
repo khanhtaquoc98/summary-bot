@@ -1,12 +1,56 @@
 import os
 import requests
-from flask import Flask, request, jsonify
-from utils.supabase_client import get_all_messages, delete_messages_before
-from utils.llm import summarize_messages, QuotaExceededError
 import telebot
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
+
+def check_and_send_payment():
+    """Kiểm tra và gửi thông báo thanh toán tiền sân"""
+    try:
+        resp = requests.get("https://cham-het-fc-team.vercel.app/api/payment/check-paid", timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            unpaidAmount = data.get('unpaidAmount', 0)
+            if unpaidAmount > 0:
+                totalCount = data.get('totalCount', 0)
+                paidCount = data.get('paidCount', 0)
+                unpaidCount = data.get('unpaidCount', 0)
+                totalAmount = data.get('totalAmount', 0)
+                paidAmount = data.get('paidAmount', 0)
+                unpaidPlayers = data.get('unpaidPlayers', [])
+                
+                msg_text = (
+                    f"📊 *THÔNG TIN THANH TOÁN*\n\n"
+                    f"👥 Tổng cầu thủ: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
+                    f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
+                    f"✅ Đã thu: {paidAmount:,.0f}đ\n"
+                    f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n"
+                    f"🔗 Link thanh toán: https://cham-het-fc-team.vercel.app/payment\n"
+                    f"📋 *Danh sách chưa thanh toán ({len(unpaidPlayers)} người):*\n"
+                )
+                for idx, p in enumerate(unpaidPlayers, 1):
+                    name = p.get('playerName', 'Unknown')
+                    team = p.get('teamName', 'Unknown')
+                    amount = p.get('totalAmount', 0)
+                    msg_text += f"{idx}. {name} ({team}): {amount:,.0f}đ\n"
+                
+                target_chat_id = os.environ.get("NOTI_CHAT_ID")
+                if target_chat_id:
+                    thread_id = os.environ.get("PAYMENT_TOPIC_ID") or os.environ.get("NOTI_TOPIC_ID")
+                    kwargs = {"parse_mode": "Markdown"}
+                    if thread_id:
+                        try:
+                            kwargs["message_thread_id"] = int(thread_id)
+                        except ValueError:
+                            pass
+                    bot.send_message(target_chat_id, msg_text, **kwargs)
+                    print("✅ Đã gửi thông báo thanh toán tiền sân")
+                    return True
+    except Exception as e:
+        print(f"Lỗi khi check payment thông tin: {e}")
+    return False
 
 @app.route('/api/cron', methods=['GET'])
 def cron_job():
@@ -16,100 +60,14 @@ def cron_job():
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
-        # Lấy tất cả tin nhắn hiện có
-        messages = get_all_messages()
-        
-        if not messages:
-            return jsonify({"status": "Không có tin nhắn nào để tóm tắt trong hôm qua"}), 200
-            
-        # Lấy thông tin thanh toán chung 1 lần
-        payment_msg = None
-        try:
-            resp = requests.get("https://cham-het-fc-team.vercel.app/api/payment/check-paid")
-            if resp.status_code == 200:
-                data = resp.json()
-                unpaidAmount = data.get('unpaidAmount', 0)
-                if unpaidAmount > 0:
-                    totalCount = data.get('totalCount', 0)
-                    paidCount = data.get('paidCount', 0)
-                    unpaidCount = data.get('unpaidCount', 0)
-                    totalAmount = data.get('totalAmount', 0)
-                    paidAmount = data.get('paidAmount', 0)
-                    unpaidPlayers = data.get('unpaidPlayers', [])
-                    
-                    msg_text = (
-                        f"📊 *THÔNG TIN THANH TOÁN*\n\n"
-                        f"👥 Tổng cầu thủ: {totalCount} ({paidCount} đã đóng, {unpaidCount} chưa đóng)\n"
-                        f"💰 Tổng tiền: {totalAmount:,.0f}đ\n"
-                        f"✅ Đã thu: {paidAmount:,.0f}đ\n"
-                        f"⚠️ Chưa thu: {unpaidAmount:,.0f}đ\n"
-                        f"🔗 Link thanh toán: https://cham-het-fc-team.vercel.app/payment\n"
-                        f"📋 *Danh sách chưa thanh toán ({len(unpaidPlayers)} người):*\n"
-                    )
-                    for idx, p in enumerate(unpaidPlayers, 1):
-                        name = p.get('playerName', 'Unknown')
-                        team = p.get('teamName', 'Unknown')
-                        amount = p.get('totalAmount', 0)
-                        msg_text += f"{idx}. {name} ({team}): {amount:,.0f}đ\n"
-                    
-                    payment_msg = msg_text
-        except Exception as e:
-            print(f"Lỗi khi check payment thông tin: {e}")
-            
-        # Gom nhóm tin nhắn theo chat_id
-        chat_groups = {}
-        for msg in messages:
-            chat_id = msg['chat_id']
-            if chat_id not in chat_groups:
-                chat_groups[chat_id] = []
-            chat_groups[chat_id].append(msg)
-            
-        # Xử lý tóm tắt cho từng group chat
-        for chat_id, msgs in chat_groups.items():
-            msgs.sort(key=lambda x: x['created_at'])
-            chat_text = "\n".join([f"{msg['user_name']}: {msg['text']}" for msg in msgs if msg.get('text') and len(msg['text'].split()) >= 2])
-            
-            # Giới hạn độ dài để tránh 413 Payload Too Large
-            MAX_CHARS = 4000
-            if len(chat_text) > MAX_CHARS:
-                chat_text = chat_text[:MAX_CHARS] + "\n... (đã cắt bớt)"
-            
-            if chat_text:
-                try:
-                    summary = summarize_messages(chat_text)
-                    
-                    # Cho phép khai báo biến môi trường NOTI_CHAT_ID và NOTI_TOPIC_ID để gửi vào chính xác 1 Topic mong muốn
-                    noti_chat_id = os.environ.get("NOTI_CHAT_ID")
-                    noti_topic_id = os.environ.get("NOTI_TOPIC_ID")
-                    
-                    target_thread = None
-                    if noti_chat_id and str(chat_id) == noti_chat_id and noti_topic_id:
-                        target_thread = int(noti_topic_id)
-                    
-                    bot.send_message(
-                        chat_id, 
-                        f"🌅 *Tóm tắt tin nhắn ngày hôm qua:*\n\n{summary}", 
-                        message_thread_id=target_thread
-                    )
-                    
-                    if payment_msg:
-                        bot.send_message(
-                            chat_id, 
-                            payment_msg, 
-                            message_thread_id=target_thread,
-                            parse_mode='Markdown'
-                        )
-                except QuotaExceededError as qe:
-                    bot.send_message(chat_id, str(qe), message_thread_id=target_thread)
-                except Exception as e:
-                    print(f"Lỗi khi gửi tóm tắt cho chat_id {chat_id}: {e}")
-                    
-        # Lấy thời gian muộn nhất để xóa (chỉ xóa những tin nhắn vừa được đọc)
-        max_time = max([m['created_at'] for m in messages])
-        delete_messages_before(max_time)
+        # Chỉ kiểm tra và gửi thông báo thanh toán
+        payment_sent = check_and_send_payment()
 
-        return jsonify({"status": "success", "groups_summarized": len(chat_groups), "messages_deleted": len(messages)}), 200
+        return jsonify({
+            "status": "success",
+            "payment_sent": payment_sent,
+            "message": "Đã thực hiện gửi thông báo thanh toán thành công"
+        }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
