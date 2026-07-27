@@ -84,7 +84,7 @@ def delete_messages_before(max_time: str):
 
 def insert_poll(poll_id: str, message_id: int, chat_id: int, thread_id: int, title: str, options: list, is_anonymous: bool):
     """Lưu/cập nhật thông tin cuộc biểu quyết (Poll) vào bảng polls (upsert)"""
-    url = f"{SUPABASE_URL}/rest/v1/polls"
+    url = f"{SUPABASE_URL}/rest/v1/polls?on_conflict=poll_id"
     headers = _headers()
     headers["Prefer"] = "resolution=merge-duplicates,return=representation"
     payload = {
@@ -102,7 +102,7 @@ def insert_poll(poll_id: str, message_id: int, chat_id: int, thread_id: int, tit
 
 def save_poll_answer(poll_id: str, user_id: int, user_name: str, option_ids: list):
     """Lưu/cập nhật kết quả vote của người dùng vào bảng poll_answers (upsert)"""
-    url = f"{SUPABASE_URL}/rest/v1/poll_answers"
+    url = f"{SUPABASE_URL}/rest/v1/poll_answers?on_conflict=poll_id,user_id"
     headers = _headers()
     headers["Prefer"] = "resolution=merge-duplicates,return=representation"
     payload = {
