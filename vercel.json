@@ -1,15 +1,9 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/**/*.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "00 2 * * *"
+      "source": "/api/(.*)",
+      "destination": "/api/webhook"
     }
   ]
 }
