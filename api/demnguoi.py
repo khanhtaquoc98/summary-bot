@@ -85,7 +85,7 @@ def demnguoi_api():
     try:
         poll_info = get_latest_poll()
         if not poll_info:
-            return jsonify({"error": "Chưa có thông tin biểu quyết nào trong database"}), 404
+            return jsonify({"status": "error", "message": "Chưa có thông tin biểu quyết nào trong database"}), 200
             
         answers = get_poll_voters(str(poll_info['poll_id']))
         report = build_demnguoi_report(poll_info, answers)

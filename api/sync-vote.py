@@ -41,7 +41,7 @@ def sync_vote():
             poll_info = get_latest_poll()
             
         if not poll_info:
-            return jsonify({"error": "Không tìm thấy dữ liệu Poll nào trong database"}), 444 if poll_id else 404
+            return jsonify({"status": "error", "message": "Không tìm thấy dữ liệu Poll nào trong database"}), 200
             
         target_poll_id = str(poll_info['poll_id'])
         options_list = poll_info.get('options', ["0", "+1", "+2", "+3", "+4"])
