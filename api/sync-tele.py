@@ -6,6 +6,7 @@ app = Flask(__name__)
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
 
 @app.route('/api/sync-tele', methods=['POST', 'GET'])
+@app.route('/', methods=['POST', 'GET'])
 def sync_tele_config():
     """
     API đồng bộ cấu hình Telegram Bot:

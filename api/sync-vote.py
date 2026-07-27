@@ -20,6 +20,7 @@ def get_latest_poll():
     return data[0] if data else None
 
 @app.route('/api/sync-vote', methods=['POST', 'GET'])
+@app.route('/', methods=['POST', 'GET'])
 def sync_vote():
     """
     API đồng bộ lại toàn bộ dữ liệu vote từ Supabase sang Bench Bulk API.
