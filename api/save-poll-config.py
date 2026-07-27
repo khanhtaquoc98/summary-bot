@@ -5,8 +5,9 @@ from utils.supabase_client import insert_poll, clear_all_poll_answers
 app = Flask(__name__)
 
 @app.route('/api/save-poll-config', methods=['POST', 'GET'])
+@app.route('/save-poll-config', methods=['POST', 'GET'])
 @app.route('/', methods=['POST', 'GET'])
-def save_poll_config():
+def save_poll_config(*args, **kwargs):
     """
     API tiếp nhận thông tin cấu hình vote từ bên ngoài, lưu/append vào Database (Supabase polls table)
     và xoá toàn bộ dữ liệu lượt vote cũ trong poll_answers.

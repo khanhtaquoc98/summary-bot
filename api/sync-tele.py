@@ -6,8 +6,9 @@ app = Flask(__name__)
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
 
 @app.route('/api/sync-tele', methods=['POST', 'GET'])
+@app.route('/sync-tele', methods=['POST', 'GET'])
 @app.route('/', methods=['POST', 'GET'])
-def sync_tele_config():
+def sync_tele_config(*args, **kwargs):
     """
     API đồng bộ cấu hình Telegram Bot:
     1. Đăng ký Webhook URL của dự án với Telegram API (nhận poll_answer, message, callback_query).

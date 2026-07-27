@@ -79,8 +79,9 @@ def build_demnguoi_report(poll_info, answers):
     }
 
 @app.route('/api/demnguoi', methods=['GET', 'POST'])
+@app.route('/demnguoi', methods=['GET', 'POST'])
 @app.route('/', methods=['GET', 'POST'])
-def demnguoi_api():
+def demnguoi_api(*args, **kwargs):
     """API lấy kết quả đếm người đá bóng"""
     try:
         poll_info = get_latest_poll()

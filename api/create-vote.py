@@ -8,8 +8,9 @@ app = Flask(__name__)
 bot = telebot.TeleBot(os.environ.get("TELEGRAM_BOT_TOKEN", ""), threaded=False)
 
 @app.route('/api/create-vote', methods=['POST', 'GET'])
+@app.route('/create-vote', methods=['POST', 'GET'])
 @app.route('/', methods=['POST', 'GET'])
-def create_vote():
+def create_vote(*args, **kwargs):
     # Lấy dữ liệu từ JSON body (POST) hoặc Query params (GET)
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
