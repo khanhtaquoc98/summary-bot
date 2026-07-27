@@ -388,3 +388,67 @@ def webhook():
 @app.route('/api/webhook', methods=['GET'])
 def check_status():
     return jsonify({"status": "Bot is running on Vercel"}), 200
+
+@app.route('/api/demnguoi', methods=['GET', 'POST'])
+def demnguoi_route():
+    try:
+        from api.demnguoi import get_latest_poll, build_demnguoi_report
+        from utils.supabase_client import get_poll_voters
+
+        poll_info = get_latest_poll()
+        if not poll_info:
+            return jsonify({"error": "Chưa có thông tin biểu quyết nào trong database"}), 404
+
+        answers = get_poll_voters(str(poll_info['poll_id']))
+        report = build_demnguoi_report(poll_info, answers)
+        return jsonify({"status": "success", "data": report}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/sync-vote', methods=['POST', 'GET'])
+def sync_vote_route():
+    try:
+        from utils.supabase_client import get_poll_voters, get_poll_by_id
+        from utils.bench_sync import parse_count_from_option_ids, BENCH_BULK_API_URL
+        from api.demnguoi import get_latest_poll
+        
+        data = request.get_json(silent=True) if request.method == 'POST' else request.args.to_dict()
+        data = data or {}
+        poll_id = data.get('poll_id')
+        poll_info = get_poll_by_id(str(poll_id)) if poll_id else get_latest_poll()
+        if not poll_info:
+            return jsonify({"error": "Không tìm thấy dữ liệu Poll nào trong database"}), 404
+            
+        target_poll_id = str(poll_info['poll_id'])
+        options_list = poll_info.get('options', ["0", "+1", "+2", "+3", "+4"])
+        answers = get_poll_voters(target_poll_id)
+        players = []
+        player_out = []
+        for ans in answers:
+            user_id_str = str(ans.get('user_id', ''))
+            user_name = ans.get('user_name', 'Unknown')
+            option_ids = ans.get('option_ids', [])
+            count = parse_count_from_option_ids(option_ids, options_list)
+            main_user_obj = {"name": user_name, "telegramId": user_id_str}
+            if count > 0:
+                players.append(main_user_obj)
+                for i in range(1, count):
+                    players.append({"name": f"{user_name} {i}"})
+            else:
+                player_out.append(main_user_obj)
+        payload = {"players": players, "playerOut": player_out}
+        resp = requests.post(BENCH_BULK_API_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
+        return jsonify({
+            "status": "success",
+            "message": "Đã đồng bộ thành công dữ liệu vote sang bench API",
+            "poll_id": target_poll_id,
+            "poll_title": poll_info.get('title'),
+            "total_voters": len(answers),
+            "players_count": len(players),
+            "player_out_count": len(player_out),
+            "bench_api_response": {"http_code": resp.status_code, "body": resp.text},
+            "synced_payload": payload
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
