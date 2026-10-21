@@ -2,12 +2,9 @@ import os
 import json
 import urllib.request
 import urllib.error
+from flask import Flask, request, jsonify, make_response
 
-try:
-    from flask import Flask, request, jsonify, make_response
-    HAS_FLASK = True
-except ImportError:
-    HAS_FLASK = False
+app = Flask(__name__)
 
 ROLES_ORDER = ["TOP", "JG", "MID", "AD", "SP"]
 
@@ -464,9 +461,9 @@ def process_analysis_request(data: dict, headers: dict) -> tuple[dict, int]:
         or os.environ.get("GROQ_API_KEY_CHAT_BOT", "").strip()
     )
 
-    model = data.get("model") or "llama-3.3-70b-versatile"
-    if model in ["gpt-4o-mini", "default", ""]:
-        model = "llama-3.3-70b-versatile"
+    model = data.get("model") or "openai/gpt-oss-120b"
+    if model in ["gpt-4o-mini", "llama-3.3-70b-versatile", "default", ""]:
+        model = "openai/gpt-oss-120b"
 
     prompt = build_lol_analysis_prompt(match, focused_player)
     fallback_result = build_fallback_analysis(match, focused_player)
@@ -486,14 +483,14 @@ def process_analysis_request(data: dict, headers: dict) -> tuple[dict, int]:
                 {
                     "role": "system",
                     "content": (
-                        "Bạn là Chuyên gia phân tích trận đấu Liên Minh Huyền Thoại (LoL AI Coach). "
+                        "Bạn là Huấn luyện viên trưởng (Head Coach - HLV) chuyên nghiệp cấp độ LCK / Thách Đấu Liên Minh Huyền Thoại. "
                         "Luôn trả về kết quả định dạng JSON hợp lệ bằng tiếng Việt theo đúng schema được yêu cầu."
                     ),
                 },
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.35,
-            "max_tokens": 2500,
+            "temperature": 0.45,
+            "max_tokens": 6000,
             "response_format": {"type": "json_object"},
         }).encode("utf-8")
 
@@ -549,38 +546,37 @@ def process_analysis_request(data: dict, headers: dict) -> tuple[dict, int]:
         }, 200
 
 
-if HAS_FLASK:
-    app = Flask(__name__)
+def _add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = (
+        "Content-Type, Authorization, x-api-key"
+    )
+    return response
 
-    def _add_cors_headers(response):
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Content-Type, Authorization, x-api-key"
-        )
-        return response
 
-    @app.after_request
-    def after_request(response):
-        return _add_cors_headers(response)
+@app.after_request
+def after_request(response):
+    return _add_cors_headers(response)
 
-    @app.route("/api/analyze-lol-match", methods=["POST", "OPTIONS", "GET"])
-    @app.route("/analyze-lol-match", methods=["POST", "OPTIONS", "GET"])
-    @app.route("/", methods=["POST", "OPTIONS", "GET"])
-    def analyze_lol_match(*args, **kwargs):
-        if request.method == "OPTIONS":
-            return _add_cors_headers(make_response("", 204))
-        if request.method == "GET":
-            return jsonify({
-                "status": "ok",
-                "service": "bot-summary LoL Match AI Analyzer",
-                "endpoint": "/api/analyze-lol-match",
-                "method": "POST",
-            }), 200
 
-        data = request.get_json(silent=True) or {}
-        res_body, status_code = process_analysis_request(data, dict(request.headers))
-        return jsonify(res_body), status_code
+@app.route("/api/analyze-lol-match", methods=["POST", "OPTIONS", "GET"])
+@app.route("/analyze-lol-match", methods=["POST", "OPTIONS", "GET"])
+@app.route("/", methods=["POST", "OPTIONS", "GET"])
+def analyze_lol_match(*args, **kwargs):
+    if request.method == "OPTIONS":
+        return _add_cors_headers(make_response("", 204))
+    if request.method == "GET":
+        return jsonify({
+            "status": "ok",
+            "service": "bot-summary LoL Match AI Analyzer",
+            "endpoint": "/api/analyze-lol-match",
+            "method": "POST",
+        }), 200
+
+    data = request.get_json(silent=True) or {}
+    res_body, status_code = process_analysis_request(data, dict(request.headers))
+    return jsonify(res_body), status_code
 
 
 if __name__ == "__main__":
